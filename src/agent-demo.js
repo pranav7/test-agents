@@ -1,7 +1,6 @@
 import './config.js'
 import OpenAI from "openai"
 import { availableFunctions, tools } from './tools.js'
-import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
 const MAX_ITERATIONS = 5
@@ -61,16 +60,17 @@ export async function agent(query) {
       case FINISH_REASONS.TOOL_CALLS:
         console.log("[agent] making tool calls", toolCalls.length)
 
-        toolCalls.map(async (toolCall) => {
+        for (const toolCall of toolCalls) {
           const toolCallResult = await runTool(toolCall)
+          console.log("[agent] tool call result", toolCallResult)
           messages.push({
             tool_call_id: toolCall.id,
             role: ROLES.TOOL,
             name: toolCall.function.name,
             content: toolCallResult
           })
-        })
-        break
+        }
+        break;
       default:
         throw new Error(`Unknown finish reason: ${finishReason}`)
     }

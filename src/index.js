@@ -36,7 +36,7 @@ app.get('/', (req, res) => {
             >
             <button
               type="submit"
-              class="bg-purple-500 text-white px-2 py-1 rounded-md hover:bg-purple-600 text-sm"
+              class="bg-black text-white px-3 py-1.5 rounded-md hover:bg-gray-900 text-sm"
             >
               Submit
             </button>
@@ -113,7 +113,7 @@ app.post('/query', async (req, res) => {
               >
               <button
                 type="submit"
-                class="bg-purple-500 text-white px-2 py-1 rounded-md hover:bg-purple-600 text-sm"
+                class="bg-black text-white px-3 py-1.5 rounded-md hover:bg-gray-900 text-sm"
               >
                 Submit
               </button>
@@ -133,7 +133,7 @@ app.post('/query', async (req, res) => {
           </div>
           <a
             href="/"
-            class="inline-block mt-4 text-purple-500 hover:text-purple-600 text-sm"
+            class="inline-block mt-4 text-black hover:text-gray-900 text-sm"
           >
             ← Start Over
           </a>
