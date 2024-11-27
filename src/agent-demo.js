@@ -1,60 +1,31 @@
 import './config.js'
 import OpenAI from "openai"
-import { getLocation, getCurrentWeather } from './tools.js'
+import { availableFunctions, tools } from './tools.js'
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
 const MAX_ITERATIONS = 5
+const MODEL = "gpt-4o-mini"
+
+const FINISH_REASONS = {
+  STOP: "stop",
+  TOOL_CALLS: "tool_calls"
+}
+
+const ROLES = {
+  SYSTEM: "system",
+  USER: "user",
+  ASSISTANT: "assistant",
+  TOOL: "tool"
+}
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   dangerouslyAllowBrowser: true
 })
 
-const availableFunctions = {
-  getLocation,
-  getCurrentWeather
-}
-
 const systemPrompt = `
-You cycle through Thought, Action, PAUSE, Observation. At the end of the loop you output a final Answer. Your final answer should be highly specific to the observations you have from running
-the actions.
-1. Thought: Describe your thoughts about the question you have been asked.
-2. Action: run one of the actions available to you - then return PAUSE.
-3. PAUSE
-4. Observation: will be the result of running those actions.
-
-Available actions:
-- getCurrentWeather:
-    E.g. getCurrentWeather: Salt Lake City
-    Returns the current weather of the location specified.
-- getLocation:
-    E.g. getLocation: null
-    Returns user's location details. No arguments needed.
-
-Example session:
-Question: Please give me some ideas for activities to do this afternoon.
-Thought: I should look up the user's location so I can give location-specific activity ideas.
-Action: getLocation: null
-PAUSE
-
-You will be called again with something like this:
-Observation: "New York City, NY"
-
-Then you loop again:
-Thought: To get even more specific activity ideas, I should get the current weather at the user's location.
-Action: getCurrentWeather: New York City
-PAUSE
-
-You'll then be called again with something like this:
-Observation: { location: "New York City, NY", forecast: ["sunny"], temperature: 5, unit: "Celsius" }
-
-You then output:
-Answer: <Suggested activities based on sunny weather that are highly specific to New York City and surrounding areas.>
-
-Important things to note:
-- Make sure your output does not have any actions if you have the final answer.
-- Make sure you never return empty actions or actions with name null or none.
+You are a helpful AI agent. Give highly specific answers based on the information you're provided. Prefer to gather information with the tools provided to you rather than giving basic, generic answers.
 `
 
 const actionSchema = z.object({
@@ -70,44 +41,60 @@ const agentResponseSchema = z.object({
 })
 
 export async function agent(query) {
-  let messages = [
-    { role: "system", content: systemPrompt },
-    { role: "user", content: query }
+  const messages = [
+    { role: ROLES.SYSTEM, content: systemPrompt },
+    { role: ROLES.USER, content: query }
   ];
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
-    console.log("iteration", i);
+    console.log(`[agent] iteration ${i + 1}`);
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages,
-      response_format: zodResponseFormat(agentResponseSchema, "agentResponse")
-    })
+    const response = await runAgent(messages)
+    const { finish_reason: finishReason, message } = response.choices[0]
+    const { tool_calls: toolCalls, content } = message
+    messages.push(message)
 
-    const responseText = response.choices[0].message.content
-    messages.push({ role: "assistant", content: responseText })
+    switch (finishReason) {
+      case FINISH_REASONS.STOP:
+        console.log("[agent] stopping", content)
+        return content
+      case FINISH_REASONS.TOOL_CALLS:
+        console.log("[agent] making tool calls", toolCalls.length)
 
-    const parsedResponse = JSON.parse(responseText)
-    console.log("parsedResponse", parsedResponse)
-
-    if (parsedResponse.action && parsedResponse.action?.name && (parsedResponse.action?.name !== "none" && parsedResponse.action?.name !== "null")) {
-      const action = parsedResponse.action
-      const observation = await actionRunner(action)
-      console.log("observation from action", observation)
-
-      messages.push({ role: "assistant", content: `Observation: ${observation}` })
-    } else {
-      console.log("no action, returning final answer")
-      return parsedResponse
+        toolCalls.map(async (toolCall) => {
+          const toolCallResult = await runTool(toolCall)
+          messages.push({
+            tool_call_id: toolCall.id,
+            role: ROLES.TOOL,
+            name: toolCall.function.name,
+            content: toolCallResult
+          })
+        })
+        break
+      default:
+        throw new Error(`Unknown finish reason: ${finishReason}`)
     }
   }
+
+  throw new Error("Max iterations reached")
 }
 
-async function actionRunner(action) {
-  if (!availableFunctions[action.name]) {
-    throw new Error(`Action ${action.name} not found`)
+async function runAgent(messages) {
+  return await openai.chat.completions.create({
+    messages,
+    tools,
+    model: MODEL,
+  })
+}
+
+async function runTool(toolCall) {
+  const name = toolCall.function.name
+  const args = JSON.parse(toolCall.function.arguments)
+
+  if (!availableFunctions[name]) {
+    throw new Error(`Function ${name} not found`)
   }
 
-  console.log("running action", action.name, action.args)
-  return await availableFunctions[action.name](...action.args)
+  console.log(`[agent] running tool ${name} with args`, args)
+  return await availableFunctions[name](args)
 }

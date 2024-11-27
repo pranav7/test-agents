@@ -2,6 +2,7 @@ import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { agent } from './agent-demo.js'
+import { marked } from 'marked'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -71,6 +72,13 @@ app.post('/query', async (req, res) => {
     console.log("calling agent, query:", query)
     const agentResponse = await agent(query)
 
+    // Sanitize and convert markdown to HTML
+    const htmlResponse = marked(agentResponse, {
+      breaks: true,
+      gfm: true,
+      sanitize: true
+    })
+
     res.send(`
       <!DOCTYPE html>
       <html lang="en">
@@ -79,6 +87,17 @@ app.post('/query', async (req, res) => {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <script src="https://cdn.tailwindcss.com"></script>
           <title>AI Agent Test</title>
+          <style>
+            .markdown-content h1 { font-size: 1.5rem; font-weight: bold; margin: 1rem 0; }
+            .markdown-content h2 { font-size: 1.25rem; font-weight: bold; margin: 0.75rem 0; }
+            .markdown-content h3 { font-size: 1.1rem; font-weight: bold; margin: 0.5rem 0; }
+            .markdown-content p { margin: 0.5rem 0; }
+            .markdown-content ul { list-style-type: disc; margin-left: 1.5rem; }
+            .markdown-content ol { list-style-type: decimal; margin-left: 1.5rem; }
+            .markdown-content code { background-color: #f3f4f6; padding: 0.2rem 0.4rem; border-radius: 0.25rem; }
+            .markdown-content pre { background-color: #f3f4f6; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; }
+            .markdown-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 0.5rem 0; }
+          </style>
         </head>
         <body class="bg-gray-50 p-4">
           <h1 class="text-2xl font-bold mb-4">AI Agent Test</h1>
@@ -109,8 +128,8 @@ app.post('/query', async (req, res) => {
               <span>Agent is thinking...</span>
             </div>
           </div>
-          <div class="flex flex-col gap-2 bg-white p-4 rounded-md shadow-md text-sm text-wrap mb-2 max-w-xl">
-            <div class="whitespace-pre-wrap">${agentResponse.answer.replace(/\n/g, '<br>')}</div>
+          <div class="flex flex-col gap-2 bg-white p-4 rounded-md shadow-md text-sm mb-2 max-w-xl">
+            <div class="markdown-content">${htmlResponse}</div>
           </div>
           <a
             href="/"
