@@ -1,6 +1,6 @@
-import './config.js'
+import '../config.js'
 import OpenAI from "openai"
-import { availableFunctions, tools } from './tools.js'
+import { availableFunctions, tools } from '../tools.js'
 import { z } from "zod";
 
 const MAX_ITERATIONS = 5
