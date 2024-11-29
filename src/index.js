@@ -1,7 +1,7 @@
 import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { agent } from './agent/agent-demo.js'
+import { agent } from './agent/agent.js'
 import { marked } from 'marked'
 import { renderAgentForm } from './agent/views/agent-form.js'
 import { renderAgentResponse } from './agent/views/agent-response.js'
