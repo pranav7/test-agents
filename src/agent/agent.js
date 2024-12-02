@@ -1,7 +1,7 @@
 import '../config.js'
-import OpenAI from "openai"
-import { availableFunctions, tools } from '../tools.js'
+import { availableFunctions, tools } from './tools.js'
 import { z } from "zod";
+import { openai } from '../openai.js'
 
 const MAX_ITERATIONS = 5
 const MODEL = "gpt-4o-mini"
@@ -17,11 +17,6 @@ const ROLES = {
   ASSISTANT: "assistant",
   TOOL: "tool"
 }
-
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true
-})
 
 const systemPrompt = `
 You are a helpful AI agent. Give highly specific answers based on the information you're provided. Prefer to gather information with the tools provided to you rather than giving basic, generic answers.

@@ -5,15 +5,20 @@ import { agent } from './agent/agent.js'
 import { marked } from 'marked'
 import { renderAgentForm } from './agent/views/agent-form.js'
 import { renderAgentResponse } from './agent/views/agent-response.js'
+import { setupAssistant } from './assistant/assistant.js'
 
 const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 const app = express()
 const PORT = process.env.PORT || 7001
 
 app.use(express.static('public'))
 app.use(express.urlencoded({ extended: true }))
+
+app.get('/assistant', async (req, res) => {
+  await setupAssistant()
+  res.send("done")
+})
 
 app.get('/agent', (req, res) => {
   res.send(renderAgentForm())
@@ -38,6 +43,7 @@ app.post('/agent/run', async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
+// Start the server and store the server instance
+const server = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
 })

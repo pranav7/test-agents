@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import './config.js'
+import '../config.js'
 
 export async function getLocation() {
   console.log("[getLocation] getting location based on IP");
